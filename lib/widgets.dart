@@ -1,9 +1,8 @@
-// Copyright 2017, Paul DeMarco.
-// All rights reserved. Use of this source code is governed by a
-// BSD-style license that can be found in the LICENSE file.
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
+import 'package:http/http.dart' as http;
 
 class ScanResultTile extends StatelessWidget {
   const ScanResultTile({Key key, this.result, this.onTap}) : super(key: key);
@@ -171,6 +170,18 @@ class CharacteristicTile extends StatelessWidget {
       this.onNotificationPressed})
       : super(key: key);
 
+  Future<http.Response> postData(List<int> data) {
+    return http.post(
+      'https://smartbandback.herokuapp.com/api/v1/addData',
+      headers: <String, String>{
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode(<String, List<int>>{
+        'data': data,
+      }),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<int>>(
@@ -178,6 +189,7 @@ class CharacteristicTile extends StatelessWidget {
       initialData: characteristic.lastValue,
       builder: (c, snapshot) {
         final value = snapshot.data;
+        postData(value);
         return ExpansionTile(
           title: ListTile(
             title: Column(
