@@ -164,25 +164,36 @@ class DeviceScreen extends StatelessWidget {
 
   void setCronTask(BluetoothCharacteristic bleChar) {
     cron.schedule(Schedule.parse('*/5 * * * *'), () async {
-      bleChar.write([229, 17]);
+      // Heart Beat
+      bleChar.write([171, 0, 4, 255, 49, 9, 1]);
       Timer(Duration(seconds: 40), () {
-        bleChar.write([199, 17]);
-        Timer(Duration(seconds: 40), () {
-          bleChar.write([36, 1]);
+        bleChar.write([171, 0, 4, 255, 49, 9, 0]);
+        Timer(Duration(seconds: 10), () {
+          // Pressure
+          bleChar.write([171, 0, 4, 255, 49, 33, 1]);
+          Timer(Duration(seconds: 60), () {
+            bleChar.write([171, 0, 4, 255, 49, 33, 0]);
+            Timer(Duration(seconds: 10), () {
+              // Saturation
+              bleChar.write([171, 0, 4, 255, 49, 17, 1]);
+              Timer(Duration(seconds: 40), () {
+                bleChar.write([171, 0, 4, 255, 49, 17, 0]);
+                Timer(Duration(seconds: 10), () {
+                  // Temperature
+                  bleChar.write([171, 0, 4, 255, 134, 128, 1]);
+                  Timer(Duration(seconds: 5), () {
+                    bleChar.write([171, 0, 4, 255, 134, 128, 0]);
+                  });
+                });
+              });
+            });
+          });
         });
       });
     });
   }
 
-  List<int> _getRandomBytes() {
-    final math = Random();
-    return [
-      math.nextInt(255),
-      math.nextInt(255),
-      math.nextInt(255),
-      math.nextInt(255)
-    ];
-  }
+  DateTime lastMeasurementTime = new DateTime.now();
 
   Future<http.Response> postData(List<int> data) {
     arrived = true;
@@ -200,8 +211,7 @@ class DeviceScreen extends StatelessWidget {
   List<Widget> _buildServiceTiles(List<BluetoothService> services) {
     List<Widget> widgets = new List<Widget>();
     for (var i = 0; i < services.length; i++) {
-      if (services[i].uuid.toString().toUpperCase().substring(4, 8) == "55FF") {
-        List<BluetoothService> serviceList = [services[i]];
+      if (services[i].uuid.toString().toUpperCase().substring(4, 8) == "0001") {
         for (var j = 0; j < services[i].characteristics.length; j++) {
           if (services[i]
                   .characteristics[j]
@@ -209,49 +219,21 @@ class DeviceScreen extends StatelessWidget {
                   .toString()
                   .toUpperCase()
                   .substring(4, 8) ==
-              "33F2") {
+              "0003") {
             List<BluetoothCharacteristic> characteristicList = [
               services[i].characteristics[j]
             ];
             if (!characteristicList[0].isNotifying) {
-              print("TESTANDO");
               characteristicList[0].setNotifyValue(true);
               characteristicList[0].value.listen((event) {
-                postData(event.toList());
+                // print(event.toList());
+                if (DateTime.now().difference(lastMeasurementTime).inSeconds >
+                    10) {
+                  postData(event.toList());
+                  lastMeasurementTime = new DateTime.now();
+                }
               });
             }
-            // widgets.addAll(serviceList
-            //     .map((s) => ServiceTile(
-            //           service: services[i],
-            //           characteristicTiles: characteristicList
-            //               .map(
-            //                 (c) => CharacteristicTile(
-            //                   characteristic: c,
-            //                   onReadPressed: () => c.read(),
-            //                   onWritePressed: () async {
-            //                     await c.write(_getRandomBytes(),
-            //                         withoutResponse: true);
-            //                     await c.read();
-            //                   },
-            //                   onNotificationPressed: () async {
-            //                     await c.setNotifyValue(!c.isNotifying);
-            //                     await c.read();
-            //                   },
-            //                   descriptorTiles: c.descriptors
-            //                       .map(
-            //                         (d) => DescriptorTile(
-            //                           descriptor: d,
-            //                           onReadPressed: () => d.read(),
-            //                           onWritePressed: () =>
-            //                               d.write(_getRandomBytes()),
-            //                         ),
-            //                       )
-            //                       .toList(),
-            //                 ),
-            //               )
-            //               .toList(),
-            //         ))
-            //     .toList());
           }
           if (services[i]
                   .characteristics[j]
@@ -259,35 +241,58 @@ class DeviceScreen extends StatelessWidget {
                   .toString()
                   .toUpperCase()
                   .substring(4, 8) ==
-              "33F1") {
+              "0002") {
             var characteristicWrite = services[i].characteristics[j];
+            // Heart Beat
             widgets.add(new Container(
                 margin: const EdgeInsets.all(10.0),
                 child: FloatingActionButton(
                   onPressed: () {
-                    characteristicWrite.write([229, 17]);
+                    characteristicWrite.write([171, 0, 4, 255, 49, 9, 1]);
+                    Timer(Duration(seconds: 40), () {
+                      characteristicWrite.write([171, 0, 4, 255, 49, 9, 0]);
+                    });
                   },
                   child: Icon(Icons.favorite, color: Colors.red),
                   backgroundColor: Colors.white,
                 )));
-
+            // Pressure
             widgets.add(new Container(
                 margin: const EdgeInsets.all(10.0),
                 child: FloatingActionButton(
                   onPressed: () {
-                    characteristicWrite.write([199, 17]);
+                    characteristicWrite.write([171, 0, 4, 255, 49, 33, 1]);
+                    Timer(Duration(seconds: 60), () {
+                      characteristicWrite.write([171, 0, 4, 255, 49, 33, 0]);
+                    });
                   },
                   child: Icon(Icons.compass_calibration, color: Colors.blue),
                   backgroundColor: Colors.white,
                 )));
-
+            // Saturation
             widgets.add(new Container(
                 margin: const EdgeInsets.all(10.0),
                 child: FloatingActionButton(
                   onPressed: () {
-                    characteristicWrite.write([36, 1]);
+                    characteristicWrite.write([171, 0, 4, 255, 49, 17, 1]);
+                    Timer(Duration(seconds: 40), () {
+                      characteristicWrite.write([171, 0, 4, 255, 49, 17, 0]);
+                    });
                   },
                   child: Icon(Icons.copyright_outlined, color: Colors.orange),
+                  backgroundColor: Colors.white,
+                )));
+            // Temperature
+            widgets.add(new Container(
+                margin: const EdgeInsets.all(10.0),
+                child: FloatingActionButton(
+                  onPressed: () {
+                    characteristicWrite.write([171, 0, 4, 255, 134, 128, 1]);
+                    Timer(Duration(seconds: 5), () {
+                      characteristicWrite.write([171, 0, 4, 255, 134, 128, 0]);
+                    });
+                  },
+                  child: Icon(Icons.alarm, color: Colors.pink),
                   backgroundColor: Colors.white,
                 )));
 
@@ -312,41 +317,6 @@ class DeviceScreen extends StatelessWidget {
     }
     return widgets;
   }
-
-  // List<Widget> _buildServiceTiles(List<BluetoothService> services) {
-  //   return services
-  //       .map(
-  //         (s) => ServiceTile(
-  //           service: s,
-  //           characteristicTiles: s.characteristics
-  //               .map(
-  //                 (c) => CharacteristicTile(
-  //                   characteristic: c,
-  //                   onReadPressed: () => c.read(),
-  //                   onWritePressed: () async {
-  //                     await c.write(_getRandomBytes(), withoutResponse: true);
-  //                     await c.read();
-  //                   },
-  //                   onNotificationPressed: () async {
-  //                     await c.setNotifyValue(!c.isNotifying);
-  //                     await c.read();
-  //                   },
-  //                   descriptorTiles: c.descriptors
-  //                       .map(
-  //                         (d) => DescriptorTile(
-  //                           descriptor: d,
-  //                           onReadPressed: () => d.read(),
-  //                           onWritePressed: () => d.write(_getRandomBytes()),
-  //                         ),
-  //                       )
-  //                       .toList(),
-  //                 ),
-  //               )
-  //               .toList(),
-  //         ),
-  //       )
-  //       .toList();
-  // }
 
   @override
   Widget build(BuildContext context) {
