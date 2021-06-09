@@ -26,6 +26,8 @@ dependencies:
   flutter_blue: ^0.7.2
   cron: ^0.2.4
   http: ^0.12.2
+  sqflite: ^1.0.0
+  path_provider: ^1.6.27
 
 
   # The following adds the Cupertino Icons font to your application.
